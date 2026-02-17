@@ -32,7 +32,7 @@ import java.util.Map;
 public final class HttpSinkRecord implements Serializable {
 
     /**
-     * HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS.
+     * HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD.
      */
     private final String method;
 
