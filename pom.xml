@@ -8,7 +8,7 @@
     <artifactId>flink-http-connector</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>flink-http-connector</name>
-    <description>Flink HTTP connector for API calls</description>
+    <description>Flink HTTP connector</description>
     <packaging>jar</packaging>
 
     <dependencyManagement>
