@@ -2,7 +2,8 @@
 
 [![Java 17](https://img.shields.io/badge/Java-17+-blue.svg)](https://docs.oracle.com/en/java/javase/17/)
 [![Flink 1.20](https://img.shields.io/badge/Flink-1.20.x-orange.svg)](https://flink.apache.org/)
-[![codecov](https://codecov.io/gh/YOUR_GITHUB_ORG/flink-http-connector/graph/badge.svg)](https://codecov.io/gh/YOUR_GITHUB_ORG/flink-http-connector)
+
+[![codecov](https://codecov.io/gh/bharathgunapati/flink-http-connector/branch/main/graph/badge.svg)](https://codecov.io/gh/bharathgunapati/flink-http-connector)
 
 This connector provides an HTTP sink for Apache Flink's **DataStream API** that writes stream elements to external systems via HTTP requests. Built on [Flink's AsyncSinkBase](https://nightlies.apache.org/flink/flink-docs-stable/api/java/org/apache/flink/connector/base/sink/AsyncSinkBase.html) (FLIP-171), it offers configurable batching, retries, and rate limiting.
 
