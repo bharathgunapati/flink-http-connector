@@ -68,4 +68,27 @@ class JsonSerdeTest {
         long size = JsonSerde.sizeInBytes(body);
         assertEquals(JsonSerde.toJson(body).getBytes().length, size);
     }
+
+    @Test
+    void toJson_nonSerializableValue_throwsIllegalArgumentException() {
+        // Object with getter that throws - Jackson wraps in JsonMappingException (extends JsonProcessingException)
+        Map<String, Object> body = Map.of("key", new Object() {
+            @SuppressWarnings("unused")
+            public String getValue() {
+                throw new RuntimeException("cannot serialize");
+            }
+        });
+        assertThrows(IllegalArgumentException.class, () -> JsonSerde.toJson(body));
+    }
+
+    @Test
+    void sizeInBytes_nonSerializableValue_throwsIllegalArgumentException() {
+        Map<String, Object> body = Map.of("key", new Object() {
+            @SuppressWarnings("unused")
+            public String getValue() {
+                throw new RuntimeException("cannot serialize");
+            }
+        });
+        assertThrows(IllegalArgumentException.class, () -> JsonSerde.sizeInBytes(body));
+    }
 }

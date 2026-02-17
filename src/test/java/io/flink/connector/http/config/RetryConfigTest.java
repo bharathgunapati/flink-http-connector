@@ -130,4 +130,15 @@ class RetryConfigTest {
         assertEquals(-1L, config.getDelayInSecs());
         assertEquals(-1000L, config.getDelayInMillis());
     }
+
+    @Test
+    void getRetriableExceptionClasses_returnsExpectedTypes() {
+        RetryConfig config = RetryConfig.defaults();
+        var classes = config.getRetriableExceptionClasses();
+
+        assertNotNull(classes);
+        assertTrue(classes.size() >= 5);
+        assertTrue(classes.contains(java.net.UnknownHostException.class));
+        assertTrue(classes.contains(javax.net.ssl.SSLException.class));
+    }
 }

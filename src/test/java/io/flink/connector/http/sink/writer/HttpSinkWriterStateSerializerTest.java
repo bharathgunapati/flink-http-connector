@@ -83,4 +83,31 @@ class HttpSinkWriterStateSerializerTest {
         assertEquals(record.getMethod(), deserializedRecord.getMethod());
         assertEquals(record.getUrl(), deserializedRecord.getUrl());
     }
+
+    @Test
+    void serializeAndDeserialize_stateWithNullHeadersAndBody_roundtrips() throws Exception {
+        HttpSinkRecord record =
+                HttpSinkRecord.builder()
+                        .method("GET")
+                        .url("https://example.com/null-test")
+                        .headers(null)
+                        .body(null)
+                        .build();
+
+        RequestEntryWrapper<HttpSinkRecord> wrapper = new RequestEntryWrapper<>(record, 0);
+        BufferedRequestState<HttpSinkRecord> state =
+                new BufferedRequestState<>(List.of(wrapper));
+
+        byte[] serialized = serializer.serialize(state);
+        BufferedRequestState<HttpSinkRecord> deserialized =
+                serializer.deserialize(serializer.getVersion(), serialized);
+
+        assertEquals(1, deserialized.getBufferedRequestEntries().size());
+        HttpSinkRecord deserializedRecord =
+                deserialized.getBufferedRequestEntries().get(0).getRequestEntry();
+        assertEquals("GET", deserializedRecord.getMethod());
+        assertEquals("https://example.com/null-test", deserializedRecord.getUrl());
+        assertTrue(deserializedRecord.getHeaders().isEmpty());
+        assertTrue(deserializedRecord.getBody().isEmpty());
+    }
 }
