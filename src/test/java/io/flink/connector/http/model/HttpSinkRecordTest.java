@@ -96,4 +96,55 @@ class HttpSinkRecordTest {
         assertEquals(record1, record2);
         assertEquals(record1.hashCode(), record2.hashCode());
     }
+
+    @Test
+    void builder_supportsPutMethod() {
+        HttpSinkRecord record = HttpSinkRecord.builder()
+                .method("PUT")
+                .url("https://example.com/update")
+                .headers(Map.of("Content-Type", "application/json"))
+                .body(Map.of("data", "value"))
+                .build();
+
+        assertEquals("PUT", record.getMethod());
+        assertEquals("https://example.com/update", record.getUrl());
+        assertEquals(Map.of("data", "value"), record.getBody());
+    }
+
+    @Test
+    void builder_supportsPatchMethod() {
+        HttpSinkRecord record = HttpSinkRecord.builder()
+                .method("PATCH")
+                .url("https://example.com/patch")
+                .headers(Map.of("Content-Type", "application/json"))
+                .body(Map.of("field", "updated"))
+                .build();
+
+        assertEquals("PATCH", record.getMethod());
+    }
+
+    @Test
+    void builder_supportsDeleteMethod() {
+        HttpSinkRecord record = HttpSinkRecord.builder()
+                .method("DELETE")
+                .url("https://example.com/resource/1")
+                .headers(Map.of())
+                .body(null)
+                .build();
+
+        assertEquals("DELETE", record.getMethod());
+        assertEquals(Collections.emptyMap(), record.getBody());
+    }
+
+    @Test
+    void builder_supportsHeadMethod() {
+        HttpSinkRecord record = HttpSinkRecord.builder()
+                .method("HEAD")
+                .url("https://example.com/check")
+                .headers(Map.of())
+                .body(null)
+                .build();
+
+        assertEquals("HEAD", record.getMethod());
+    }
 }

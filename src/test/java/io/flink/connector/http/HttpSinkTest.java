@@ -388,4 +388,196 @@ class HttpSinkTest extends AbstractTestBase {
         wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/no-retry")));
     }
 
+    @Test
+    void httpSink_sendsGetRequest() throws Exception {
+        int port = wireMockServer.port();
+        String baseUrl = "http://localhost:" + port;
+
+        wireMockServer.stubFor(
+                get(urlPathEqualTo("/resource"))
+                        .willReturn(aResponse().withStatus(200).withBody("ok")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("GET")
+                                .url(baseUrl + "/resource?id=" + element)
+                                .headers(Map.of())
+                                .body(null)
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("a", "b").sinkTo(sink);
+        env.execute();
+
+        wireMockServer.verify(2, getRequestedFor(urlPathMatching("/resource.*")));
+    }
+
+    @Test
+    void httpSink_sendsPutRequest() throws Exception {
+        int port = wireMockServer.port();
+        String baseUrl = "http://localhost:" + port;
+
+        wireMockServer.stubFor(
+                put(urlPathEqualTo("/update"))
+                        .willReturn(aResponse().withStatus(200).withBody("updated")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("PUT")
+                                .url(baseUrl + "/update")
+                                .headers(Map.of("Content-Type", "application/json"))
+                                .body(Map.of("id", element, "status", "updated"))
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("item-1").sinkTo(sink);
+        env.execute();
+
+        wireMockServer.verify(putRequestedFor(urlPathEqualTo("/update"))
+                .withRequestBody(containing("\"id\":\"item-1\"")));
+    }
+
+    @Test
+    void httpSink_sendsPatchRequest() throws Exception {
+        int port = wireMockServer.port();
+        String baseUrl = "http://localhost:" + port;
+
+        wireMockServer.stubFor(
+                patch(urlPathEqualTo("/partial-update"))
+                        .willReturn(aResponse().withStatus(200).withBody("patched")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("PATCH")
+                                .url(baseUrl + "/partial-update")
+                                .headers(Map.of("Content-Type", "application/json"))
+                                .body(Map.of("field", element))
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("newValue").sinkTo(sink);
+        env.execute();
+
+        wireMockServer.verify(patchRequestedFor(urlPathEqualTo("/partial-update"))
+                .withRequestBody(containing("\"field\":\"newValue\"")));
+    }
+
+    @Test
+    void httpSink_sendsDeleteRequest() throws Exception {
+        int port = wireMockServer.port();
+        String baseUrl = "http://localhost:" + port;
+
+        wireMockServer.stubFor(
+                delete(urlPathEqualTo("/resource/1"))
+                        .willReturn(aResponse().withStatus(204)));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("DELETE")
+                                .url(baseUrl + "/resource/" + element)
+                                .headers(Map.of())
+                                .body(null)
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("1").sinkTo(sink);
+        env.execute();
+
+        wireMockServer.verify(deleteRequestedFor(urlPathEqualTo("/resource/1")));
+    }
+
+    @Test
+    void httpSink_sendsHeadRequest() throws Exception {
+        int port = wireMockServer.port();
+        String baseUrl = "http://localhost:" + port;
+
+        wireMockServer.stubFor(
+                head(urlPathEqualTo("/check"))
+                        .willReturn(aResponse().withStatus(200).withHeader("ETag", "abc123")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("HEAD")
+                                .url(baseUrl + "/check")
+                                .headers(Map.of())
+                                .body(null)
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("x").sinkTo(sink);
+        env.execute();
+
+        wireMockServer.verify(headRequestedFor(urlPathEqualTo("/check")));
+    }
+
 }
