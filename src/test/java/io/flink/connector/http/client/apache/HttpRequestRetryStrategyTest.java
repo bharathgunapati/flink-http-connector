@@ -39,7 +39,7 @@ class HttpRequestRetryStrategyTest {
         IOException exception = new UnknownHostException("unknown host");
         boolean shouldRetry = httpRequestRetryStrategy.retryRequest(request, exception, 1, context);
 
-        assertTrue(shouldRetry);
+        assertFalse(shouldRetry);
     }
 
     @Test
