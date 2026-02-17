@@ -137,6 +137,13 @@ All options are configured via `HttpSinkConfig.builder()` with nested `SinkWrite
 | `maxConnectionsPerHost` | no | Max connections per host | 15 |
 | `httpClientThreadPoolSize` | no | HTTP client thread pool size | 64 |
 | `defaultHeaders` | no | Default headers for all requests | `Content-Type: application/json`, `Accept: application/json` |
+| `proxyHost` | no | Proxy host (e.g. `proxy.example.com`). When set with `proxyPort`, routes all requests via proxy | null |
+| `proxyPort` | no | Proxy port (e.g. 8080). Required when `proxyHost` is set | null |
+| `proxyScheme` | no | Proxy scheme (`http` or `https`) | `http` |
+| `trustStorePath` | no | Path to trust store (JKS or PKCS12) for custom CA certificates | null |
+| `trustStorePassword` | no | Trust store password. Required when `trustStorePath` is set | null |
+| `keyStorePath` | no | Path to key store (JKS or PKCS12) for client certificates (mTLS) | null |
+| `keyStorePassword` | no | Key store password. Required when `keyStorePath` is set | null |
 
 ### Retry (`RetryConfig`)
 
@@ -174,6 +181,27 @@ HttpSinkConfig config = HttpSinkConfig.builder()
             .transientStatusCodes(List.of(500, 502, 503, 429))
             .nonRetryableStatusCodes(List.of(400))
             .build())
+    .build();
+
+HttpSink<String> sink = new HttpSink<>(converter, config);
+```
+
+With proxy and SSL:
+
+```java
+import io.flink.connector.http.config.HttpClientConfig;
+
+HttpClientConfig httpConfig = HttpClientConfig.builder()
+    .proxyHost("proxy.example.com")
+    .proxyPort(8080)
+    .trustStorePath("/path/to/truststore.jks")
+    .trustStorePassword("trust-secret")
+    .keyStorePath("/path/to/keystore.p12")   // optional, for mTLS
+    .keyStorePassword("key-secret")
+    .build();
+
+HttpSinkConfig config = HttpSinkConfig.builder()
+    .httpClientConfig(httpConfig)
     .build();
 
 HttpSink<String> sink = new HttpSink<>(converter, config);

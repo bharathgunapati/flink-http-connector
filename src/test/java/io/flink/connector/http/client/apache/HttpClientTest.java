@@ -17,6 +17,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -315,5 +319,112 @@ class HttpClientTest {
             httpClient.close();
             httpClient.close();
         });
+    }
+
+    @Test
+    void constructor_withProxyConfig_buildsAndClosesCleanly() {
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .proxyHost("proxy.example.com")
+                        .proxyPort(8080)
+                        .build();
+        httpClient = new HttpClient(metricGroup, config, RetryConfig.defaults());
+        assertDoesNotThrow(() -> httpClient.close());
+    }
+
+    @Test
+    void constructor_withTrustStoreConfig_buildsAndClosesCleanly() throws Exception {
+        Path trustStorePath = createTempTrustStore();
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .trustStorePath(trustStorePath.toString())
+                        .trustStorePassword("password")
+                        .build();
+        httpClient = new HttpClient(metricGroup, config, RetryConfig.defaults());
+        assertDoesNotThrow(() -> httpClient.close());
+        Files.deleteIfExists(trustStorePath);
+    }
+
+    @Test
+    void constructor_withKeyStoreOnlyConfig_buildsAndClosesCleanly() throws Exception {
+        Path keyStorePath = createTempKeyStoreWithKey();
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .keyStorePath(keyStorePath.toString())
+                        .keyStorePassword("password")
+                        .build();
+        httpClient = new HttpClient(metricGroup, config, RetryConfig.defaults());
+        assertDoesNotThrow(() -> httpClient.close());
+        Files.deleteIfExists(keyStorePath);
+    }
+
+    @Test
+    void constructor_withTrustAndKeyStoreConfig_buildsAndClosesCleanly() throws Exception {
+        Path trustStorePath = createTempTrustStore();
+        Path keyStorePath = createTempKeyStoreWithKey();
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .trustStorePath(trustStorePath.toString())
+                        .trustStorePassword("password")
+                        .keyStorePath(keyStorePath.toString())
+                        .keyStorePassword("password")
+                        .build();
+        httpClient = new HttpClient(metricGroup, config, RetryConfig.defaults());
+        assertDoesNotThrow(() -> httpClient.close());
+        Files.deleteIfExists(trustStorePath);
+        Files.deleteIfExists(keyStorePath);
+    }
+
+    @Test
+    void constructor_withInvalidTrustStorePath_throwsIllegalStateException() {
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .trustStorePath("/nonexistent/path/to/truststore.jks")
+                        .trustStorePassword("password")
+                        .build();
+        assertThrows(
+                IllegalStateException.class,
+                () -> new HttpClient(metricGroup, config, RetryConfig.defaults()));
+    }
+
+    private Path createTempTrustStore() throws Exception {
+        KeyStore trustStore = KeyStore.getInstance("JKS");
+        trustStore.load(null, null);
+        Path path = Files.createTempFile("test-trust", ".jks");
+        try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
+            trustStore.store(fos, "password".toCharArray());
+        }
+        return path;
+    }
+
+    private Path createTempKeyStoreWithKey() throws Exception {
+        Path path = Files.createTempFile("test-key", ".p12");
+        Files.delete(path); // keytool will create the file; empty file causes "Keystore file exists, but is empty"
+        ProcessBuilder pb =
+                new ProcessBuilder(
+                        "keytool",
+                        "-genkeypair",
+                        "-alias",
+                        "test",
+                        "-keyalg",
+                        "RSA",
+                        "-keystore",
+                        path.toString(),
+                        "-storepass",
+                        "password",
+                        "-storetype",
+                        "PKCS12",
+                        "-dname",
+                        "CN=test",
+                        "-keypass",
+                        "password");
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        int exitCode = p.waitFor();
+        if (exitCode != 0) {
+            throw new AssertionError(
+                    "keytool failed: " + new String(p.getInputStream().readAllBytes()));
+        }
+        return path;
     }
 }

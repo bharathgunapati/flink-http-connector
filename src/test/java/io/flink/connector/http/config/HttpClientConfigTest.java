@@ -4,7 +4,11 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HttpClientConfigTest {
 
@@ -22,6 +26,14 @@ class HttpClientConfigTest {
         assertEquals(15, config.getMaxConnections());
         assertEquals(15, config.getMaxConnectionsPerHost());
         assertEquals(64, config.getHttpClientThreadPoolSize());
+        assertNull(config.getProxyHost());
+        assertNull(config.getProxyPort());
+        assertEquals("http", config.getProxyScheme());
+        assertNull(config.getTrustStorePath());
+        assertNull(config.getKeyStorePath());
+        assertFalse(config.isProxyConfigured());
+        assertFalse(config.isTrustStoreConfigured());
+        assertFalse(config.isKeyStoreConfigured());
     }
 
     @Test
@@ -97,5 +109,75 @@ class HttpClientConfigTest {
 
         assertNotNull(str);
         assertFalse(str.isEmpty());
+    }
+
+    @Test
+    void builder_withProxyConfig_setsProxyFields() {
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .proxyHost("proxy.example.com")
+                        .proxyPort(8080)
+                        .proxyScheme("https")
+                        .build();
+
+        assertTrue(config.isProxyConfigured());
+        assertEquals("proxy.example.com", config.getProxyHost());
+        assertEquals(8080, config.getProxyPort());
+        assertEquals("https", config.getProxyScheme());
+    }
+
+    @Test
+    void builder_withTrustAndKeyStore_setsSslFields() {
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .trustStorePath("/path/to/truststore.jks")
+                        .trustStorePassword("trust-secret")
+                        .keyStorePath("/path/to/keystore.p12")
+                        .keyStorePassword("key-secret")
+                        .build();
+
+        assertTrue(config.isTrustStoreConfigured());
+        assertTrue(config.isKeyStoreConfigured());
+        assertEquals("/path/to/truststore.jks", config.getTrustStorePath());
+        assertEquals("trust-secret", config.getTrustStorePassword());
+        assertEquals("/path/to/keystore.p12", config.getKeyStorePath());
+        assertEquals("key-secret", config.getKeyStorePassword());
+    }
+
+    @Test
+    void isProxyConfigured_returnsFalse_whenOnlyProxyHostSet() {
+        HttpClientConfig config =
+                HttpClientConfig.builder().proxyHost("proxy.example.com").build();
+        assertFalse(config.isProxyConfigured());
+    }
+
+    @Test
+    void isProxyConfigured_returnsFalse_whenOnlyProxyPortSet() {
+        HttpClientConfig config = HttpClientConfig.builder().proxyPort(8080).build();
+        assertFalse(config.isProxyConfigured());
+    }
+
+    @Test
+    void isProxyConfigured_returnsFalse_whenProxyHostEmpty() {
+        HttpClientConfig config =
+                HttpClientConfig.builder()
+                        .proxyHost("")
+                        .proxyPort(8080)
+                        .build();
+        assertFalse(config.isProxyConfigured());
+    }
+
+    @Test
+    void isTrustStoreConfigured_returnsFalse_whenPathEmpty() {
+        HttpClientConfig config =
+                HttpClientConfig.builder().trustStorePath("").build();
+        assertFalse(config.isTrustStoreConfigured());
+    }
+
+    @Test
+    void isKeyStoreConfigured_returnsFalse_whenPathEmpty() {
+        HttpClientConfig config =
+                HttpClientConfig.builder().keyStorePath("").build();
+        assertFalse(config.isKeyStoreConfigured());
     }
 }

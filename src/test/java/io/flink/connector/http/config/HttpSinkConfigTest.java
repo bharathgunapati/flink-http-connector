@@ -67,6 +67,13 @@ class HttpSinkConfigTest {
         assertEquals(config.getHttpClientConfig().getMaxConnections(), config.getMaxConnections());
         assertEquals(config.getHttpClientConfig().getMaxConnectionsPerHost(), config.getMaxConnectionsPerHost());
         assertEquals(config.getHttpClientConfig().getHttpClientThreadPoolSize(), config.getHttpClientThreadPoolSize());
+        assertEquals(config.getHttpClientConfig().getProxyHost(), config.getProxyHost());
+        assertEquals(config.getHttpClientConfig().getProxyPort(), config.getProxyPort());
+        assertEquals(config.getHttpClientConfig().getProxyScheme(), config.getProxyScheme());
+        assertEquals(config.getHttpClientConfig().getTrustStorePath(), config.getTrustStorePath());
+        assertEquals(config.getHttpClientConfig().getTrustStorePassword(), config.getTrustStorePassword());
+        assertEquals(config.getHttpClientConfig().getKeyStorePath(), config.getKeyStorePath());
+        assertEquals(config.getHttpClientConfig().getKeyStorePassword(), config.getKeyStorePassword());
     }
 
     @Test

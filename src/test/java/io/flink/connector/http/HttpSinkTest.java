@@ -2,6 +2,7 @@ package io.flink.connector.http;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import io.flink.connector.http.config.HttpClientConfig;
 import io.flink.connector.http.config.HttpSinkConfig;
 import io.flink.connector.http.config.RetryConfig;
 import io.flink.connector.http.config.SinkWriterConfig;
@@ -13,6 +14,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
 import org.junit.jupiter.api.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,23 +29,76 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 class HttpSinkTest extends AbstractTestBase {
 
     private static WireMockServer wireMockServer;
+    private static WireMockServer wireMockHttpsServer;
+    private static Path httpsKeystorePath;
 
     @BeforeAll
-    static void setUp() {
+    static void setUp() throws Exception {
         wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
         wireMockServer.start();
+
+        // Create keystore for HTTPS tests (shared by WireMock server and client trust store)
+        httpsKeystorePath = createHttpsKeystore();
+        wireMockHttpsServer =
+                new WireMockServer(
+                        WireMockConfiguration.wireMockConfig()
+                                .dynamicHttpsPort()
+                                .keystorePath(httpsKeystorePath.toString())
+                                .keystorePassword("password")
+                                .keyManagerPassword("password"));
+        wireMockHttpsServer.start();
     }
 
     @AfterAll
-    static void tearDown() {
+    static void tearDown() throws Exception {
         if (wireMockServer != null) {
             wireMockServer.stop();
         }
+        if (wireMockHttpsServer != null) {
+            wireMockHttpsServer.stop();
+        }
+        if (httpsKeystorePath != null) {
+            Files.deleteIfExists(httpsKeystorePath);
+        }
+    }
+
+    private static Path createHttpsKeystore() throws Exception {
+        Path path = Files.createTempFile("wiremock-https", ".p12");
+        Files.delete(path);
+        ProcessBuilder pb =
+                new ProcessBuilder(
+                        "keytool",
+                        "-genkeypair",
+                        "-alias",
+                        "wiremock",
+                        "-keyalg",
+                        "RSA",
+                        "-keystore",
+                        path.toString(),
+                        "-storepass",
+                        "password",
+                        "-storetype",
+                        "PKCS12",
+                        "-dname",
+                        "CN=localhost",
+                        "-keypass",
+                        "password");
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        int exitCode = p.waitFor();
+        if (exitCode != 0) {
+            throw new AssertionError(
+                    "keytool failed: " + new String(p.getInputStream().readAllBytes()));
+        }
+        return path;
     }
 
     @BeforeEach
     void resetWireMock() {
         wireMockServer.resetAll();
+        if (wireMockHttpsServer != null) {
+            wireMockHttpsServer.resetAll();
+        }
     }
 
     @Test
@@ -578,6 +634,94 @@ class HttpSinkTest extends AbstractTestBase {
         env.execute();
 
         wireMockServer.verify(headRequestedFor(urlPathEqualTo("/check")));
+    }
+
+    @Test
+    void httpSink_https_sendsRecordsToEndpoint() throws Exception {
+        int port = wireMockHttpsServer.httpsPort();
+        String baseUrl = "https://localhost:" + port;
+
+        wireMockHttpsServer.stubFor(
+                post(urlPathEqualTo("/ingest"))
+                        .willReturn(aResponse().withStatus(200).withBody("ok")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("POST")
+                                .url(baseUrl + "/ingest")
+                                .headers(Map.of("Content-Type", "application/json"))
+                                .body(Map.of("payload", element))
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(10)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .httpClientConfig(
+                                HttpClientConfig.builder()
+                                        .trustStorePath(httpsKeystorePath.toString())
+                                        .trustStorePassword("password")
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        DataStream<String> stream = env.fromElements("a", "b", "c");
+        stream.sinkTo(sink);
+
+        env.execute();
+
+        wireMockHttpsServer.verify(3, postRequestedFor(urlPathEqualTo("/ingest")));
+    }
+
+    @Test
+    void httpSink_https_sendsGetRequest() throws Exception {
+        int port = wireMockHttpsServer.httpsPort();
+        String baseUrl = "https://localhost:" + port;
+
+        wireMockHttpsServer.stubFor(
+                get(urlPathEqualTo("/resource"))
+                        .willReturn(aResponse().withStatus(200).withBody("ok")));
+
+        ElementConverter<String, HttpSinkRecord> elementConverter =
+                (element, context) ->
+                        HttpSinkRecord.builder()
+                                .method("GET")
+                                .url(baseUrl + "/resource?id=" + element)
+                                .headers(Map.of())
+                                .body(null)
+                                .build();
+
+        HttpSinkConfig config =
+                HttpSinkConfig.builder()
+                        .sinkWriterConfig(
+                                SinkWriterConfig.builder()
+                                        .maxBatchSize(5)
+                                        .maxTimeInBufferMS(500)
+                                        .build())
+                        .httpClientConfig(
+                                HttpClientConfig.builder()
+                                        .trustStorePath(httpsKeystorePath.toString())
+                                        .trustStorePassword("password")
+                                        .build())
+                        .build();
+
+        HttpSink<String> sink = new HttpSink<>(elementConverter, config);
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromElements("a", "b").sinkTo(sink);
+        env.execute();
+
+        wireMockHttpsServer.verify(2, getRequestedFor(urlPathMatching("/resource.*")));
     }
 
 }

@@ -42,6 +42,8 @@ public class HttpClientConfig implements Serializable {
     private static final Map<String, Object> DEFAULT_HEADERS =
             Map.of("Content-Type", "application/json", "Accept", "application/json");
 
+    private static final String DEFAULT_PROXY_SCHEME = "http";
+
     private final int connectTimeoutMs;
     private final int requestTimeoutMs;
     private final int responseTimeoutMs;
@@ -54,8 +56,57 @@ public class HttpClientConfig implements Serializable {
     private final int httpClientThreadPoolSize;
     private final Map<String, Object> defaultHeaders;
 
+    /** Proxy host (e.g. "proxy.example.com"). When null, no proxy is used. */
+    @lombok.Builder.Default
+    private final String proxyHost = null;
+
+    /** Proxy port (e.g. 8080). Required when proxyHost is set. */
+    @lombok.Builder.Default
+    private final Integer proxyPort = null;
+
+    /** Proxy scheme ("http" or "https"). Default "http". */
+    @lombok.Builder.Default
+    private final String proxyScheme = DEFAULT_PROXY_SCHEME;
+
+    /** Path to trust store (JKS or PKCS12) for custom CA certificates. When null, JVM default is used. */
+    @lombok.Builder.Default
+    private final String trustStorePath = null;
+
+    /** Trust store password. Required when trustStorePath is set. */
+    @lombok.Builder.Default
+    private final String trustStorePassword = null;
+
+    /** Path to key store (JKS or PKCS12) for client certificates. When null, no client cert. */
+    @lombok.Builder.Default
+    private final String keyStorePath = null;
+
+    /** Key store password. Required when keyStorePath is set. */
+    @lombok.Builder.Default
+    private final String keyStorePassword = null;
+
     public Map<String, Object> getDefaultHeaders() {
         return defaultHeaders != null ? defaultHeaders : Collections.emptyMap();
+    }
+
+    /**
+     * Returns true if proxy is configured (both proxyHost and proxyPort are set).
+     */
+    public boolean isProxyConfigured() {
+        return proxyHost != null && !proxyHost.isEmpty() && proxyPort != null;
+    }
+
+    /**
+     * Returns true if custom trust store is configured.
+     */
+    public boolean isTrustStoreConfigured() {
+        return trustStorePath != null && !trustStorePath.isEmpty();
+    }
+
+    /**
+     * Returns true if custom key store (client cert) is configured.
+     */
+    public boolean isKeyStoreConfigured() {
+        return keyStorePath != null && !keyStorePath.isEmpty();
     }
 
     /**
@@ -75,6 +126,13 @@ public class HttpClientConfig implements Serializable {
                 DEFAULT_MAX_CONNECTIONS,
                 DEFAULT_MAX_CONNECTIONS_PER_HOST,
                 DEFAULT_HTTP_CLIENT_THREAD_POOL_SIZE,
-                DEFAULT_HEADERS);
+                DEFAULT_HEADERS,
+                null,
+                null,
+                DEFAULT_PROXY_SCHEME,
+                null,
+                null,
+                null,
+                null);
     }
 }

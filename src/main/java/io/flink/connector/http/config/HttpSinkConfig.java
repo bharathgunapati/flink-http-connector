@@ -127,6 +127,34 @@ public class HttpSinkConfig implements Serializable {
         return httpClientConfig.getHttpClientThreadPoolSize();
     }
 
+    public String getProxyHost() {
+        return httpClientConfig.getProxyHost();
+    }
+
+    public Integer getProxyPort() {
+        return httpClientConfig.getProxyPort();
+    }
+
+    public String getProxyScheme() {
+        return httpClientConfig.getProxyScheme();
+    }
+
+    public String getTrustStorePath() {
+        return httpClientConfig.getTrustStorePath();
+    }
+
+    public String getTrustStorePassword() {
+        return httpClientConfig.getTrustStorePassword();
+    }
+
+    public String getKeyStorePath() {
+        return httpClientConfig.getKeyStorePath();
+    }
+
+    public String getKeyStorePassword() {
+        return httpClientConfig.getKeyStorePassword();
+    }
+
     public int getMaxRetries() {
         return retryConfig.getMaxRetries();
     }
