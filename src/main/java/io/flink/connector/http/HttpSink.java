@@ -40,7 +40,7 @@ public class HttpSink<InputT> extends HttpSinkBase<InputT> {
      * @param elementConverter converts upstream elements to {@link HttpSinkRecord}
      * @param httpSinkConfig sink configuration
      */
-    HttpSink(
+    public HttpSink(
             ElementConverter<InputT, HttpSinkRecord> elementConverter,
             HttpSinkConfig httpSinkConfig) {
         super(elementConverter, httpSinkConfig);
