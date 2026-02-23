@@ -13,37 +13,33 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
- * Example demonstrating POST requests with the Flink HTTP Sink Connector.
+ * Example demonstrating PUT requests with the Flink HTTP Sink Connector.
  *
- * <p>Sends a stream of events via POST to https://httpbin.org/post (echo service).
- * Override with system property: -Dhttp.endpoint.url=https://your-api.com/ingest
- *
- * <p>Run: mvn exec:java -pl example
+ * <p>Sends a stream of update events via PUT to https://httpbin.org/put (echo service).
  */
-public class HttpSinkExample {
+public class HttpSinkPutExample {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HttpSinkExample.class);
-    private static final String DEFAULT_ENDPOINT = "https://httpbin.org/post";
+    private static final Logger LOG = LoggerFactory.getLogger(HttpSinkPutExample.class);
+    private static final String DEFAULT_ENDPOINT = "https://httpbin.org/put";
 
     public static void main(String[] args) throws Exception {
-        String endpointUrl =
-                System.getProperty("http.endpoint.url", DEFAULT_ENDPOINT);
-        LOG.info("Starting Flink HTTP Sink Example, endpoint: {}", endpointUrl);
+        String endpointUrl = System.getProperty("http.endpoint.url", DEFAULT_ENDPOINT);
+        LOG.info("Starting HttpSink PUT Example, endpoint: {}", endpointUrl);
 
-        StreamExecutionEnvironment env =
-                StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
 
         ElementConverter<String, HttpSinkRecord> converter =
                 (element, context) ->
                         HttpSinkRecord.builder()
-                                .method("POST")
+                                .method("PUT")
                                 .url(endpointUrl)
                                 .headers(Map.of("Content-Type", "application/json"))
                                 .body(
                                         Map.of(
-                                                "message", element,
-                                                "timestamp", System.currentTimeMillis()))
+                                                "id", "resource-" + (context.timestamp() != null ? context.timestamp() : System.currentTimeMillis()),
+                                                "data", element,
+                                                "action", "update"))
                                 .build();
 
         HttpSinkConfig config =
@@ -55,23 +51,20 @@ public class HttpSinkExample {
                                         .build())
                         .build();
 
-        HttpSink<String> sink = new HttpSink<>(converter, config);
-
         DataStream<String> stream =
                 env.fromElements(
-                        "Hello Flink",
-                        "HTTP Sink Example",
-                        "Event streaming",
-                        "At-least-once delivery")
+                                "Update item A",
+                                "Update item B",
+                                "Update item C")
                         .map(
                                 msg -> {
-                                    LOG.info("Sending record: {}", msg);
+                                    LOG.info("PUT record: {}", msg);
                                     return msg;
                                 });
 
-        stream.sinkTo(sink);
+        stream.sinkTo(new HttpSink<>(converter, config));
         LOG.info("Submitting job...");
-        env.execute("Flink HTTP Sink Example");
+        env.execute("Flink HTTP Sink PUT Example");
         LOG.info("Job completed successfully");
     }
 }
